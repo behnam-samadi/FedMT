@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 
 class Learner:
     """
@@ -286,9 +286,22 @@ class Learner:
 
         """
         param_list = []
+        shapes = []
+        #print("********************************\n before printing ************\n")
+        #for i in self.model.parameters():
+          #print(type(i))
+          #print(i.shape)
+          #print(i)
+          #print("********************************\n after printing ************\n")
+          #np.save("one_update.npy", i)
+          #raise(False)
+
 
         for param in self.model.parameters():
             param_list.append(param.data.view(-1, ))
+            shapes.append(param.shape)
+        np.save("shapes.npy", shapes)
+        raise(False)
 
         return torch.cat(param_list)
 

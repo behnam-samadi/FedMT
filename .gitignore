@@ -2,7 +2,7 @@
 .idea/
 logs/
 chkpts/
-
+data/cifar10/
 # Don't track files with these extensioons
 *.ipynb
 *.npy

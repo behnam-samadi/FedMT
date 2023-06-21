@@ -361,12 +361,14 @@ def get_cifar10():
         cifar10_data, cifar10_targets
     """
     cifar10_path = os.path.join("data", "cifar10", "raw_data")
+    print("-------------------------------------")
+    print(cifar10_path)
     assert os.path.isdir(cifar10_path), "Download cifar10 dataset!!"
 
     cifar10_train =\
         CIFAR10(
             root=cifar10_path,
-            train=True, download=False
+            train=True, download=True
         )
 
     cifar10_test =\

@@ -263,7 +263,15 @@ class Aggregator(ABC):
                     k=self.n_clients_per_round,
                 )
         else:
-            self.sampled_clients = self.rng.sample(self.clients, k=self.n_clients_per_round)
+            sample_indices = self.rng.sample(range(len(self.clients)), k=self.n_clients_per_round)
+            self.sampled_clients = []
+            for i in range(self.n_clients_per_round):
+              self.sampled_clients.append(self.clients[sample_indices[i]])
+            #self.sampled_clients = self.rng.sample(self.clients, k=self.n_clients_per_round)
+        print("-------------------------------inja------------------")
+        print(self.sampled_clients)
+        return sample_indices
+        
 
 
 class NoCommunicationAggregator(Aggregator):
@@ -291,17 +299,45 @@ class CentralizedAggregator(Aggregator):
 
     """
     def mix(self):
-        self.sample_clients()
+        temp = np.load("round.npy")
+        num_round = temp[0,0]
+        print("--------------- num round: ------------", num_round)
+        sample_indices = self.sample_clients()
+        clients_updates = np.zeros((self.n_clients_per_round, self.n_learners, self.model_dim))
+        np.save("sample_indices" + str(num_round+1) + ".npy", sample_indices)
 
-        for client in self.sampled_clients:
-            client.step()
+        
+        for i in range(len(sample_indices)):
+          client = self.clients[sample_indices[i]]
+          clients_updates[i] = client.step()
+        
 
+        #np.save("clients_updates.npy", clients_updates)
+
+
+        similarities = np.zeros((self.n_learners, self.n_clients_per_round, self.n_clients_per_round))
+
+        for learner_id in range(self.n_learners):
+            similarities[learner_id] = pairwise_distances(clients_updates[:, learner_id, :], metric="euclidean")
+
+        similarities = similarities.mean(axis=0)
+        np.save("similarities.npy", similarities)
+        np.save("similarities" + str(num_round+1) + ".npy", similarities)
+        temp[0, 0] = num_round + 1
+        np.save("round.npy", temp)
+        #raise(False)
+        
+        
+        #for client in self.sampled_clients:
+            #client.step()
+            
         for learner_id, learner in enumerate(self.global_learners_ensemble):
             learners = [client.learners_ensemble[learner_id] for client in self.clients]
             average_learners(learners, learner, weights=self.clients_weights)
 
         # assign the updated model to all clients
         self.update_clients()
+        
 
         self.c_round += 1
 
