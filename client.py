@@ -108,7 +108,7 @@ class Client(object):
                     weights=self.samples_weights
                 )
         else:
-            client_updates = \
+            client_updates , client_updates_not_flat = \
                 self.learners_ensemble.fit_epochs(
                     iterator=self.train_iterator,
                     n_epochs=self.local_steps,
@@ -118,7 +118,7 @@ class Client(object):
         # TODO: add flag arguments to use `free_gradients`
         # self.learners_ensemble.free_gradients()
 
-        return client_updates
+        return client_updates, client_updates_not_flat
 
     def write_logs(self):
         if self.tune_locally:

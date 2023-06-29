@@ -65,7 +65,7 @@ class Learner:
         self.lr_scheduler = lr_scheduler
         self.is_binary_classification = is_binary_classification
 
-        self.model_dim = int(self.get_param_tensor().shape[0])
+        self.model_dim = int(self.get_param_tensor()[0].shape[0])
 
     def optimizer_step(self):
         """
@@ -286,6 +286,7 @@ class Learner:
 
         """
         param_list = []
+        param_list_not_flat = []
         shapes = []
         #print("********************************\n before printing ************\n")
         #for i in self.model.parameters():
@@ -299,11 +300,11 @@ class Learner:
 
         for param in self.model.parameters():
             param_list.append(param.data.view(-1, ))
-            shapes.append(param.shape)
-        np.save("shapes.npy", shapes)
-        raise(False)
+            param_list_not_flat.append(param.data.cpu().numpy())
+            #shapes.append(param.shape)
+        #np.save("shapes.npy", shapes)
 
-        return torch.cat(param_list)
+        return torch.cat(param_list), np.array(param_list_not_flat)
 
     def get_grad_tensor(self):
         """

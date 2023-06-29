@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 
 class LearnersEnsemble(object):
     """
@@ -77,19 +77,34 @@ class LearnersEnsemble(object):
 
         """
         client_updates = torch.zeros(len(self.learners), self.model_dim)
+        client_updates_not_flat = []
 
         for learner_id, learner in enumerate(self.learners):
-            old_params = learner.get_param_tensor()
+            old_params, old_params_not_flat = learner.get_param_tensor()
             if weights is not None:
                 learner.fit_batch(batch=batch, weights=weights[learner_id])
             else:
                 learner.fit_batch(batch=batch, weights=None)
 
-            params = learner.get_param_tensor()
-
+            params, params_not_flat = learner.get_param_tensor()
             client_updates[learner_id] = (params - old_params)
+            print("----------partial printing-----\n")
+            print(len(params_not_flat))
+            import numpy as np
+            np.save("temp.npy", params_not_flat[0].cpu().numpy())
+            raise(False)
+            for i in range(len(params_not_flat)):
+              print(params_not_flat[i])
+              print("second")
+              print(old_params_not_flat[i])
+              temp = (params_not_flat[i] - old_params_not_flat[i]).cpu.numpy()
+              client_updates_not_flat.append(temp)
+              print("third")
+              print(client_updates_not_flat[i])
+              
 
-        return client_updates.cpu().numpy()
+
+        return client_updates.cpu().numpy(), client_updates_not_flat
 
     def fit_epochs(self, iterator, n_epochs, weights=None):
         """
@@ -108,18 +123,49 @@ class LearnersEnsemble(object):
 
         """
         client_updates = torch.zeros(len(self.learners), self.model_dim)
+        client_updates_not_flat = []
 
         for learner_id, learner in enumerate(self.learners):
-            old_params = learner.get_param_tensor()
+            old_params, old_params_not_flat = learner.get_param_tensor()
+            #print("partial results-------------------\n")
+            #print("1-")
+            #print(old_params.shape)
+            #print(old_params[0:20])
+            #print("2-")
+            #print(old_params_not_flat[0][0,:,:,:])
+            #print(old_params_not_flat[0])
+            
+            #old_params_not_flat = old_params_not_flat.cpu().numpy()
             if weights is not None:
                 learner.fit_epochs(iterator, n_epochs, weights=weights[learner_id])
             else:
                 learner.fit_epochs(iterator, n_epochs, weights=None)
-            params = learner.get_param_tensor()
-
+            params, params_not_flat = learner.get_param_tensor()
+            #print("3-")
+            #print(params.shape)
+            #print(params[0:20])
+            #print("4-")
+            #print(params_not_flat[0][0,:,:,:])
+            #print(params_not_flat[0])
+            #params_not_flat = params_not_flat.cpu().numpy()
             client_updates[learner_id] = (params - old_params)
+            #print(client_updates[learner_id][0:20])
+            
+            
+            #client_updates_not_flat[learner_id] = (params_not_flat - old_params_not_flat)
+            #temp = []
+            #print(client_updates[learner_id])
+            #client_updates_not_flat
+            #for layer in range(len(params_not_flat)):
+              #temp.append((params_not_flat[layer] - old_params_not_flat[layer]))
+              #print(params_not_flat[layer])
+              #print("****and******\n")
+              #print(old_params_not_flat[layer])
+              #raise(False)
+            client_updates_not_flat.append(params_not_flat - old_params_not_flat)
 
-        return client_updates.cpu().numpy()
+
+        return (client_updates.cpu().numpy(), np.array(client_updates_not_flat))
 
     def evaluate_iterator(self, iterator):
         """

@@ -268,8 +268,8 @@ class Aggregator(ABC):
             for i in range(self.n_clients_per_round):
               self.sampled_clients.append(self.clients[sample_indices[i]])
             #self.sampled_clients = self.rng.sample(self.clients, k=self.n_clients_per_round)
-        print("-------------------------------inja------------------")
-        print(self.sampled_clients)
+        #print("-------------------------------inja------------------")
+        #print(self.sampled_clients)
         return sample_indices
         
 
@@ -304,12 +304,26 @@ class CentralizedAggregator(Aggregator):
         print("--------------- num round: ------------", num_round)
         sample_indices = self.sample_clients()
         clients_updates = np.zeros((self.n_clients_per_round, self.n_learners, self.model_dim))
+        clients_updates_not_flat = []
         np.save("sample_indices" + str(num_round+1) + ".npy", sample_indices)
 
         
         for i in range(len(sample_indices)):
           client = self.clients[sample_indices[i]]
-          clients_updates[i] = client.step()
+          clients_updates[i], temp_update = client.step()
+          clients_updates_not_flat.append(temp_update)
+        #print("------------\n partial tests:---------\n")
+        print(type(clients_updates_not_flat[0]))
+        print((clients_updates_not_flat[0]).shape)
+
+        print(clients_updates_not_flat[0][0, -2])
+        print(clients_updates_not_flat[0][0, -2].shape)
+        #print(type(clients_updates_not_flat))
+        #print(len(clients_updates_not_flat))
+        #print(clients_updates_not_flat[0].shape)
+        raise(False)
+
+
         
 
         #np.save("clients_updates.npy", clients_updates)
