@@ -313,6 +313,7 @@ class CentralizedAggregator(Aggregator):
           clients_updates[i], temp_update = client.step()
           clients_updates_not_flat.append(temp_update)
         #print("------------\n partial tests:---------\n")
+        clients_updates_not_flat = np.array(clients_updates_not_flat)
         print(type(clients_updates_not_flat[0]))
         print((clients_updates_not_flat[0]).shape)
 
@@ -321,7 +322,7 @@ class CentralizedAggregator(Aggregator):
         #print(type(clients_updates_not_flat))
         #print(len(clients_updates_not_flat))
         #print(clients_updates_not_flat[0].shape)
-        raise(False)
+        #raise(False)
 
 
         
@@ -335,8 +336,9 @@ class CentralizedAggregator(Aggregator):
             similarities[learner_id] = pairwise_distances(clients_updates[:, learner_id, :], metric="euclidean")
 
         similarities = similarities.mean(axis=0)
-        np.save("similarities.npy", similarities)
-        np.save("similarities" + str(num_round+1) + ".npy", similarities)
+        #np.save("similarities.npy", similarities)
+        #np.save("similarities" + str(num_round+1) + ".npy", similarities)
+        np.save("layer_updates" + str(num_round+1) + ".npy", clients_updates_not_flat[:,:,-2])
         temp[0, 0] = num_round + 1
         np.save("round.npy", temp)
         #raise(False)
