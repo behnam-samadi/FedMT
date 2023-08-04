@@ -14,6 +14,135 @@ from sklearn.cluster import AgglomerativeClustering
 from utils.torch_utils import *
 
 
+
+
+
+
+
+B = np.load("/content/drive/MyDrive/FL/FedEM/data/cifar10/clients_shares.npy", allow_pickle = True)
+
+def get_model_update(client, class_num, current_layers, current_indices, iteration):
+  layers_1 = np.load("/content/drive/MyDrive/FL/FedEM/layer_updates" +str(iteration-1)+ ".0.npy", allow_pickle=True)
+  indices_1 = np.load("/content/drive/MyDrive/FL/FedEM/sample_indices" +str(iteration-1)+ ".0.npy")
+  layers_2 = current_layers
+  indices_2 = np.array(current_indices)
+  index1 = np.where(indices_1 == client)[0][0]
+  index2 = np.where(indices_2 == client)[0][0]
+  vec1 = layers_1[index1][0][class_num]
+  vec2 = layers_2[index2][0][class_num]
+  return(np.linalg.norm(vec1 - vec2))
+
+def get_median(class_num, iteration, current_layers, current_indices):
+  layers = current_layers
+  indices = current_indices
+  #reshaping layers from (80, ) of (10, 1280) to (80, 1280):
+  just_fc_layers = np.zeros((layers.shape[0], layers[0][0].shape[1]))
+  for i in range(just_fc_layers.shape[0]):
+    just_fc_layers[i] = layers[i][0][class_num]
+  pairwise_dis = pairwise_distances(just_fc_layers, metric="cosine")
+  pairwise_dis_norms = np.zeros(pairwise_dis.shape[0])
+  for i in range(pairwise_dis.shape[0]):
+    pairwise_dis_norms[i] = np.linalg.norm(pairwise_dis[i,:])
+  return indices[np.argmin(pairwise_dis_norms)]
+
+
+def get_median_clients_set(class_num, current_layers, current_indices,  clients_list):
+  layers = current_layers
+  indices = current_indices
+  #reshaping layers from (80, ) of (10, 1280) to (80, 1280):
+  just_fc_layers = np.zeros((len(clients_list), layers[0][0].shape[1]))
+  for i in range(just_fc_layers.shape[0]):
+    just_fc_layers[i] = layers[clients_list[i]][0][class_num]
+  pairwise_dis = pairwise_distances(just_fc_layers, metric="cosine")
+  pairwise_dis_norms = np.zeros(pairwise_dis.shape[0])
+  for i in range(pairwise_dis.shape[0]):
+    pairwise_dis_norms[i] = np.linalg.norm(pairwise_dis[i,:])
+  return clients_list[np.argmin(pairwise_dis_norms)]
+
+def select_base_client(class_num, iteration, num_clients, method, current_layers, current_indices,  ratio = 0.05):
+  indices = current_indices
+  result = []
+  for i in range(num_clients):
+    result.append(get_model_update(i, class_num, current_layers, current_indices,  iteration))
+  order = np.argsort(result)[::-1]
+  selected_clients = order[0:int(num_clients*ratio)]
+  top_median = get_median_clients_set(class_num, current_layers, current_indices, selected_clients)
+  top_threshold = order[0]
+  normal_median = get_median(class_num, iteration, current_layers, current_indices)
+  if method == "normal":
+    return([normal_median])
+  if method == "largest":
+    return([top_threshold])
+  if method == "top_n_median":
+    return([top_median])
+
+
+
+
+from scipy import spatial
+def select_clients_per_class(class_num, num_clients, iteration, dis_threshold, method, current_layers, current_indices, ratio = 0.05):
+  layers = current_layers
+  indices = current_indices
+  if method == "med_normal":
+    selected = select_base_client(class_num, iteration, B.shape[0], "normal", current_layers, current_indices)
+  if method == "med_top_n":
+    selected = select_base_client(class_num, iteration, B.shape[0], "top_n_median",current_layers, current_indices, 0.05)
+  if method == "largest":
+    selected = select_base_client(class_num, iteration, B.shape[0], "largest", current_layers, current_indices)
+  if method == "threshold":
+    result = []
+    for i in range(num_clients):
+      result.append(get_model_update(i, class_num, current_layers, current_indices,  iteration))
+    order = np.argsort(result)[::-1]
+    for item in order[0:int(num_clients*ratio)]:
+      print(B[item, class_num])
+    return(order[0:int(num_clients*ratio)])
+  if method == "med_normal" or method == "med_top_n" or method == "largest":
+    update_norms = []
+    for c in range(num_clients):
+      update_norms.append(get_model_update(c, class_num,current_layers, current_indices,  iteration))
+    #print(max(update_norms))
+    update_norms = update_norms / max(update_norms)
+    #print(update_norms)
+    dis_to_selected = []
+    vec1 = layers[selected[0]][0][class_num]
+    for c in range(num_clients):
+      vec2 = (layers[c][0][class_num])
+      dis_to_selected.append(1 - spatial.distance.cosine(vec1,vec2))
+    dis_to_selected = np.array(dis_to_selected)
+    update_norms = np.array(update_norms)
+    final_scores = dis_to_selected * update_norms
+    clients_sort = np.argsort(final_scores)[::-1]
+    result = []
+    print("----------------------:")
+    for c in clients_sort[0:int(num_clients*ratio)]:
+      result.append(c)
+      print(B[c][class_num])
+    print("----------------------:")
+    return(result)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Aggregator(ABC):
     r""" Base class for Aggregator. `Aggregator` dictates communications between clients
 
@@ -305,51 +434,23 @@ class CentralizedAggregator(Aggregator):
         sample_indices = self.sample_clients()
         clients_updates = np.zeros((self.n_clients_per_round, self.n_learners, self.model_dim))
         clients_updates_not_flat = []
-        np.save("sample_indices" + str(num_round+1) + ".npy", sample_indices)
-
-        
+        np.save("sample_indices" + str(num_round) + ".npy", sample_indices)
         for i in range(len(sample_indices)):
           client = self.clients[sample_indices[i]]
           clients_updates[i], temp_update = client.step()
           clients_updates_not_flat.append(temp_update)
-        #print("------------\n partial tests:---------\n")
         clients_updates_not_flat = np.array(clients_updates_not_flat)
-        print(type(clients_updates_not_flat[0]))
-        print((clients_updates_not_flat[0]).shape)
-
-        print(clients_updates_not_flat[0][0, -2])
-        print(clients_updates_not_flat[0][0, -2].shape)
-        #print(type(clients_updates_not_flat))
-        #print(len(clients_updates_not_flat))
-        #print(clients_updates_not_flat[0].shape)
-        #raise(False)
-
-
-        
-
-        #np.save("clients_updates.npy", clients_updates)
-
-
-        similarities = np.zeros((self.n_learners, self.n_clients_per_round, self.n_clients_per_round))
-
-        for learner_id in range(self.n_learners):
-            similarities[learner_id] = pairwise_distances(clients_updates[:, learner_id, :], metric="euclidean")
-
-        similarities = similarities.mean(axis=0)
-        #np.save("similarities.npy", similarities)
-        #np.save("similarities" + str(num_round+1) + ".npy", similarities)
-        np.save("layer_updates" + str(num_round+1) + ".npy", clients_updates_not_flat[:,:,-2])
+        np.save("layer_updates" + str(num_round) + ".npy", clients_updates_not_flat[:,:,-2])
         temp[0, 0] = num_round + 1
         np.save("round.npy", temp)
-        #raise(False)
+        selected_per_class = []
+        if num_round > 0:
+          for class_num in range(10):#immediate_data
+            selected_per_class.append(select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_top_n",clients_updates_not_flat[:,:,-2], sample_indices ,0.1))
         
-        
-        #for client in self.sampled_clients:
-            #client.step()
-            
         for learner_id, learner in enumerate(self.global_learners_ensemble):
             learners = [client.learners_ensemble[learner_id] for client in self.clients]
-            average_learners(learners, learner, weights=self.clients_weights)
+            average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
 
         # assign the updated model to all clients
         self.update_clients()

@@ -7,6 +7,7 @@ import torch.nn as nn
 def average_learners(
         learners,
         target_learner,
+        selected_clients_per_class,
         weights=None,
         average_params=True,
         average_gradients=False):
@@ -35,32 +36,62 @@ def average_learners(
         weights = weights.to(learners[0].device)
 
     target_state_dict = target_learner.model.state_dict(keep_vars=True)
-
+    import numpy as np
+    #np.save("state_dict.npy", target_state_dict.cpu())
+    #torch.save(target_state_dict, 'state_dict.pth')
     for key in target_state_dict:
-
         if target_state_dict[key].data.dtype == torch.float32:
-
             if average_params:
                 target_state_dict[key].data.fill_(0.)
-
             if average_gradients:
                 target_state_dict[key].grad = target_state_dict[key].data.clone()
                 target_state_dict[key].grad.data.fill_(0.)
+            cuda0 = torch.device('cuda:0')
+            if key=="classifier.1.weight":
+              temp_layer = torch.zeros((target_state_dict[key].data.shape[0],target_state_dict[key].data.shape[1] ), device=cuda0)
+              for class_num in range(10): #immediate_data
+                print(class_num, " of ", 10, "(weight)")
+                print(selected_clients_per_class)
+                clients = selected_clients_per_class[class_num]
+                print("selected for this class:(weigth) ")
+                print(clients)
+                temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
+                for client in clients:
+                  temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                  temp_sub_layer = temp_sub_layer + temp_state_dict[key].data.clone()[class_num, :]
+                temp_sub_layer /= len(clients)                  
+                temp_layer[class_num, :] = temp_sub_layer
+              target_state_dict[key].data = temp_layer.data.clone()
 
-            for learner_id, learner in enumerate(learners):
-                state_dict = learner.model.state_dict(keep_vars=True)
-
-                if average_params:
-                    target_state_dict[key].data += weights[learner_id] * state_dict[key].data.clone()
-
-                if average_gradients:
-                    if state_dict[key].grad is not None:
-                        target_state_dict[key].grad += weights[learner_id] * state_dict[key].grad.clone()
-                    elif state_dict[key].requires_grad:
-                        warnings.warn(
-                            "trying to average_gradients before back propagation,"
-                            " you should set `average_gradients=False`."
-                        )
+            if key == "classifier.1.bias":
+                temp_layer = torch.zeros((target_state_dict[key].data.shape[0]), device=cuda0)
+                for class_num in range(10): #immediate_data
+                  print(class_num, " of ", 10, "(bias)")
+                  clients = selected_clients_per_class[class_num]
+                  print("selected for this class:(bias) ")
+                  print(clients)
+                  temp_sub_layer = torch.zeros(1, device=cuda0)
+                  for client in clients:
+                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                    temp_sub_layer = temp_sub_layer + temp_state_dict[key].data.clone()[class_num]
+                  temp_sub_layer /= len(clients)                  
+                  temp_layer[class_num] = temp_sub_layer
+                target_state_dict[key].data = temp_layer.data.clone()
+            else:
+                  layer_size = target_state_dict[key].data.shape
+                  temp_layer = torch.zeros((layer_size), device=cuda0)
+                  temp_layer_per_classes = torch.zeros(torch.Size([10] + list(layer_size)), device=cuda0) #immediate_data
+                  for class_num in range(10): #immediate_data
+                    clients = selected_clients_per_class[class_num]
+                    temp_layer = torch.zeros((layer_size), device=cuda0)
+                    for client in clients:
+                      temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                      temp_layer = temp_layer + temp_state_dict[key].data.clone()[class_num]
+                    temp_layer /= len(clients)                  
+                    temp_layer_per_classes[class_num] = temp_layer
+                  for class_num in range(10): #immediate_data
+                    target_state_dict[key].data += (0.1) *temp_layer_per_classes[class_num].data.clone() #immediate_data
+                  
 
         else:
             # tracked batches
