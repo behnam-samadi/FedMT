@@ -118,9 +118,6 @@ def average_learners(
               temp_layer = torch.zeros((target_state_dict[key].data.shape[0],target_state_dict[key].data.shape[1] ), device=cuda0)
               for class_num in range(10): #immediate_data
                 clients = selected_clients_per_class[class_num]
-                print("clients")
-                print(clients)
-                print("where selected")
                 temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
                 for client in clients:
                   temp_state_dict = learners[client].model.state_dict(keep_vars = True)
@@ -129,13 +126,10 @@ def average_learners(
                 temp_layer[class_num, :] = temp_sub_layer
               target_state_dict[key].data = temp_layer.data.clone()
 
-            elif key == "classifier.1.bias":
+            if key == "classifier.1.bias":
                 temp_layer = torch.zeros((target_state_dict[key].data.shape[0]), device=cuda0)
                 for class_num in range(10): #immediate_data
                   clients = selected_clients_per_class[class_num]
-                  print("clients")
-                  print(clients)
-                  print("where selected")
                   temp_sub_layer = torch.zeros(1, device=cuda0)
                   for client in clients:
                     temp_state_dict = learners[client].model.state_dict(keep_vars = True)
@@ -144,28 +138,19 @@ def average_learners(
                   temp_layer[class_num] = temp_sub_layer
                 target_state_dict[key].data = temp_layer.data.clone()
             else:
-                if average_params:
-                    target_state_dict[key].data.fill_(0.)
-
-                if average_gradients:
-                    target_state_dict[key].grad = target_state_dict[key].data.clone()
-                    target_state_dict[key].grad.data.fill_(0.)
-
-                for learner_id, learner in enumerate(learners):
-                    state_dict = learner.model.state_dict(keep_vars=True)
-
-                    if average_params:
-                        target_state_dict[key].data += weights[learner_id] * state_dict[key].data.clone()
-
-                    if average_gradients:
-                        if state_dict[key].grad is not None:
-                            target_state_dict[key].grad += weights[learner_id] * state_dict[key].grad.clone()
-                        elif state_dict[key].requires_grad:
-                            warnings.warn(
-                                "trying to average_gradients before back propagation,"
-                                " you should set `average_gradients=False`."
-                            )
-
+                  layer_size = target_state_dict[key].data.shape
+                  temp_layer = torch.zeros((layer_size), device=cuda0)
+                  temp_layer_per_classes = torch.zeros(torch.Size([10] + list(layer_size)), device=cuda0) #immediate_data
+                  for class_num in range(10): #immediate_data
+                    clients = selected_clients_per_class[class_num]
+                    temp_layer = torch.zeros((layer_size), device=cuda0)
+                    for client in clients:
+                      temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                      temp_layer = temp_layer + temp_state_dict[key].data.clone()[class_num]
+                    temp_layer /= len(clients)                  
+                    temp_layer_per_classes[class_num] = temp_layer
+                  for class_num in range(10): #immediate_data
+                    target_state_dict[key].data += (0.1) *temp_layer_per_classes[class_num].data.clone() #immediate_data
                   
 
         else:
