@@ -75,6 +75,7 @@ def average_learners(
         learners,
         target_learner,
         selected_clients_per_class,
+        centers_per_class,
         weights=None,
         average_params=True,
         average_gradients=False):
@@ -118,14 +119,31 @@ def average_learners(
               temp_layer = torch.zeros((target_state_dict[key].data.shape[0],target_state_dict[key].data.shape[1] ), device=cuda0)
               for class_num in range(10): #immediate_data
                 clients = selected_clients_per_class[class_num]
-                print("clients")
-                print(clients)
-                print("where selected")
+                outliers = []
+                for c in range(len(learners)):
+                  if not c in clients:
+                    outliers.append(c)
                 temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
-                for client in clients:
-                  temp_state_dict = learners[client].model.state_dict(keep_vars = True)
-                  temp_sub_layer = temp_sub_layer + temp_state_dict[key].data.clone()[class_num, :]
-                temp_sub_layer /= len(clients)                  
+                for client in range(len(learners)):
+                  if client in clients:
+                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                    temp_sub_layer = temp_sub_layer + temp_state_dict[key].data.clone()[class_num, :]
+                  if client in outliers:
+                    #appliying A-Gem formulation:
+                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                    g = temp_state_dict[key].data.clone()[class_num, :]
+                    #print("very temp-----------------")
+                    #print(class_num)
+                    #print(centers_per_class)
+                    #print(centers_per_class[class_num])
+                    #print("very temp \\\\\\\\\\\\\\\\")
+                    temp_state_dict = learners[centers_per_class[class_num]].model.state_dict(keep_vars = True)
+                    g_ref = temp_state_dict[key].data.clone()[class_num, :]
+                    numerator = (torch.inner(torch.t(g), g_ref))
+                    denominator = torch.inner(torch.t(g_ref), g_ref)
+                    projected_gradient = g - ((numerator/denominator)*g_ref)
+                    temp_sub_layer = temp_sub_layer + projected_gradient
+                temp_sub_layer /= len(learners)                  
                 temp_layer[class_num, :] = temp_sub_layer
               target_state_dict[key].data = temp_layer.data.clone()
 
@@ -133,9 +151,9 @@ def average_learners(
                 temp_layer = torch.zeros((target_state_dict[key].data.shape[0]), device=cuda0)
                 for class_num in range(10): #immediate_data
                   clients = selected_clients_per_class[class_num]
-                  print("clients")
-                  print(clients)
-                  print("where selected")
+                  #print("clients")
+                  #print(clients)
+                  #print("where selected")
                   temp_sub_layer = torch.zeros(1, device=cuda0)
                   for client in clients:
                     temp_state_dict = learners[client].model.state_dict(keep_vars = True)

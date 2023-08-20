@@ -117,7 +117,7 @@ def select_clients_per_class(class_num, num_clients, iteration, dis_threshold, m
     for c in clients_sort[0:int(num_clients*ratio)]:
       result.append(c)
       #print(B[c][class_num])
-    return(result)
+    return(selected, result)
 
 
 
@@ -442,15 +442,17 @@ class CentralizedAggregator(Aggregator):
         temp[0, 0] = num_round + 1
         np.save("round.npy", temp)
         selected_per_class = []
+        centers_per_class = []
         if num_round > 0:
           print("\n\n proposed version \n\n")
           for class_num in range(10):#immediate_data
-            selected_per_class.append(select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_top_n",clients_updates_not_flat[:,:,-2], sample_indices ,0.1))
+            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_top_n",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
+            selected_per_class.append(selecteds[1])
+            centers_per_class.append(selecteds[0][0])
             #print(len(selected_per_class[-1]))
-          
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
-              average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
+              average_learners(learners, learner,selected_per_class,centers_per_class,  weights=self.clients_weights)
         else:
             print("\n\n\nclassic version:\n\n\n")
             for learner_id, learner in enumerate(self.global_learners_ensemble):
