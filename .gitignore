@@ -5,7 +5,6 @@ chkpts/
 data/cifar10/all_data/
 data/cifar10/raw_data
 # Don't track files with these extensioons
-*.ipynb
 *.npy
 *.pth
 *.csv
