@@ -446,13 +446,13 @@ class CentralizedAggregator(Aggregator):
         if num_round > 0:
           #print("\n\n proposed version \n\n")
           for class_num in range(10):#immediate_data
-            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_normal",clients_updates_not_flat[:,:,-2], sample_indices ,1)            
+            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_normal",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
             selected_per_class.append(selecteds[1])
             centers_per_class.append(selecteds[0][0])
             #print(len(selected_per_class[-1]))
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
-              average_learners(learners, learner,selected_per_class,  weights=self.clients_weights)
+              average_learners(learners, learner,selected_per_class, centers_per_class,  weights=self.clients_weights)
         else:
             #print("\n\n\nclassic version:\n\n\n")
             for learner_id, learner in enumerate(self.global_learners_ensemble):

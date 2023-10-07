@@ -1,6 +1,7 @@
 # Don't track content of these folders
 .idea/
 logs/
+log_backup/
 chkpts/
 data/cifar10/all_data/
 data/cifar10/raw_data

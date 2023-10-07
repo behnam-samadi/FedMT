@@ -107,6 +107,7 @@ def average_learners(
     import numpy as np
     #np.save("state_dict.npy", target_state_dict.cpu())
     #torch.save(target_state_dict, 'state_dict.pth')
+    cos = torch.nn.CosineSimilarity(dim=0)
     for key in target_state_dict:
         if target_state_dict[key].data.dtype == torch.float32:
             if average_params:
@@ -118,6 +119,7 @@ def average_learners(
             if key=="classifier.1.weight":
               temp_layer = torch.zeros((target_state_dict[key].data.shape[0],target_state_dict[key].data.shape[1] ), device=cuda0)
               for class_num in range(10): #immediate_data
+                f = open("gradient_angles/"+str(class_num)+".txt", 'a+')
                 clients = selected_clients_per_class[class_num]
                 outliers = []
                 for c in range(len(learners)):
@@ -139,12 +141,15 @@ def average_learners(
                     #print("very temp \\\\\\\\\\\\\\\\")
                     temp_state_dict = learners[centers_per_class[class_num]].model.state_dict(keep_vars = True)
                     g_ref = temp_state_dict[key].data.clone()[class_num, :]
+                    output = cos(g , g_ref)
+                    f.writelines(str(client) +" : " +str(output))
                     numerator = (torch.inner(torch.t(g), g_ref))
                     denominator = torch.inner(torch.t(g_ref), g_ref)
                     projected_gradient = g - ((numerator/denominator)*g_ref)
                     temp_sub_layer = temp_sub_layer + projected_gradient
                 temp_sub_layer /= len(learners)                  
                 temp_layer[class_num, :] = temp_sub_layer
+                f.close()
               target_state_dict[key].data = temp_layer.data.clone()
 
             elif key == "classifier.1.bias":
