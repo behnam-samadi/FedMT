@@ -75,7 +75,6 @@ def average_learners(
         learners,
         target_learner,
         selected_clients_per_class,
-        centers_per_class,
         weights=None,
         average_params=True,
         average_gradients=False):
@@ -105,9 +104,8 @@ def average_learners(
 
     target_state_dict = target_learner.model.state_dict(keep_vars=True)
     import numpy as np
-    num_projs = open("num_projs.txt", 'a+')
-    temp = np.load("round.npy")
-    num_round = temp[0,0]
+    from numpy import dot
+    from numpy.linalg import norm
     #np.save("state_dict.npy", target_state_dict.cpu())
     #torch.save(target_state_dict, 'state_dict.pth')
     cos = torch.nn.CosineSimilarity(dim=1)
@@ -122,66 +120,47 @@ def average_learners(
             if key=="classifier.1.weight":
               temp_layer = torch.zeros((target_state_dict[key].data.shape[0],target_state_dict[key].data.shape[1] ), device=cuda0)
               for class_num in range(10): #immediate_data
-                f = open("gradient_angles/"+str(class_num)+".txt", 'a+')
                 clients = selected_clients_per_class[class_num]
                 outliers = []
                 for c in range(len(learners)):
                   if not c in clients:
                     outliers.append(c)
+                #computing the weights for selected clients weighs:
+                # Step1: computing the nearest selected client for each outlier client:
+                all_data = []
+                for c in range(len(learners)):
+                  temp_c_state_dict = learners[c].model.state_dict(keep_vars = True)
+                  all_data.append(temp_c_state_dict[key].data.cpu().numpy()[class_num])
+                outlier_centers = []
+                for outlier in outliers:
+                  dis_to_clients = []
+                  for client in clients:
+                    cos_sim = dot(all_data[outlier], all_data[client])/(norm(all_data[outlier])*norm(all_data[client]))
+                    dis_to_clients.append(cos_sim)
+                  dis_to_clients = np.array(dis_to_clients)
+                  outlier_centers.append(np.argmax(dis_to_clients))
+                # Step2: computing the projection of each outlier on its corresponding center (selected client)
+                center_weights = np.zeros(len(clients))
+                for i in range(len(outliers)):
+                  outlier = outliers[i]
+                  outlier_data = all_data[outlier]
+                  center_data = all_data[clients[outlier_centers[i]]]
+                  projection_mag = (dot(outlier_data , center_data))/norm(center_data)
+                  center_weights[[outlier_centers[i]]] += projection_mag
+                sum_weights = 0
+                for i in range(len(clients)):
+                  sum_weights += center_weights[i]
+                for i in range(len(clients)):
+                  center_weights[i] /= sum_weights
+                print("------------ Clients Weigths: -----------")
+                print(center_weights)
                 temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
-                num_projecteds = 0
-                for client in range(len(learners)):
-                  if client in clients:
-                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
-                    temp_sub_layer = temp_sub_layer + temp_state_dict[key].data.clone()[class_num, :]
-                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
-                    #printing gradient angels for selected clients:
-                    g = temp_state_dict[key].data.clone()[class_num, :]
-                    temp_state_dict = learners[centers_per_class[class_num]].model.state_dict(keep_vars = True)
-                    g_ref = temp_state_dict[key].data.clone()[class_num, :]
-                    output = cos(g.unsqueeze(0)  , g_ref.unsqueeze(0))
-                    print("\n********* selected clients: ********")
-                    print(g)
-                    print(g_ref)
-                    print(g.shape)
-                    print(g_ref.shape)
-                    print(output)
-                    print("\n**************")
-                  if client in outliers:
-                    #appliying A-Gem formulation:
-                    temp_state_dict = learners[client].model.state_dict(keep_vars = True)
-                    g = temp_state_dict[key].data.clone()[class_num, :]
-                    #print("very temp-----------------")
-                    #print(class_num)
-                    #print(centers_per_class)
-                    #print(centers_per_class[class_num])
-                    #print("very temp \\\\\\\\\\\\\\\\")
-                    temp_state_dict = learners[centers_per_class[class_num]].model.state_dict(keep_vars = True)
-                    g_ref = temp_state_dict[key].data.clone()[class_num, :]
-                    
-                    output = cos(g.unsqueeze(0)  , g_ref.unsqueeze(0))
-                    print("\n************** other clients: ****")
-                    print(g)
-                    print(g_ref)
-                    print(g.shape)
-                    print(g_ref.shape)
-                    print(output)
-                    print("\n**************")
-                    num_projs.write(str(num_round) + " : " + str(class_num) + " : "  + str(output.cpu().numpy()) +'\n')
-                    num_projs.write(str(num_round) + " : " + str(class_num) + " : "  + str(output) +'\n')
-                    f.writelines(str(num_round) + " : "+ str(client) +" : " +str(output)+"\n")
-                    numerator = (torch.inner(torch.t(g), g_ref))
-                    denominator = torch.inner(torch.t(g_ref), g_ref)
-                    projected_gradient = g - ((numerator/denominator)*g_ref)
-                    if (output.cpu().numpy()<0):
-                      temp_sub_layer = temp_sub_layer + projected_gradient
-                      num_projecteds += 1
-                    else:
-                      temp_sub_layer = temp_sub_layer + g
-                num_projs.write(str(num_round) + " : " + str(class_num) + " : " +  str(num_projecteds) + " : " + '\n')
-                temp_sub_layer /= len(learners)                  
+                for i in range(len(clients)):
+                  client = clients[i]
+                  temp_state_dict = learners[client].model.state_dict(keep_vars = True)
+                  temp_sub_layer = temp_sub_layer + center_weights[i]* (temp_state_dict[key].data.clone()[class_num, :])
+                #temp_sub_layer /= len(clients)                  
                 temp_layer[class_num, :] = temp_sub_layer
-                f.close()
               target_state_dict[key].data = temp_layer.data.clone()
 
             elif key == "classifier.1.bias":
@@ -229,8 +208,6 @@ def average_learners(
             for learner_id, learner in enumerate(learners):
                 state_dict = learner.model.state_dict()
                 target_state_dict[key].data += state_dict[key].data.clone()
-    num_projs.close()
-
 
 def partial_average(learners, average_learner, alpha):
     """
@@ -342,5 +319,3 @@ def simplex_projection(v, s=1):
     w = (w * (w > 0)).clip(min=0)
 
     return w
-
-

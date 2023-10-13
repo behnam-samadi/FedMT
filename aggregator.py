@@ -452,7 +452,7 @@ class CentralizedAggregator(Aggregator):
             #print(len(selected_per_class[-1]))
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
-              average_learners(learners, learner,selected_per_class, centers_per_class,  weights=self.clients_weights)
+              average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
         else:
             #print("\n\n\nclassic version:\n\n\n")
             for learner_id, learner in enumerate(self.global_learners_ensemble):
