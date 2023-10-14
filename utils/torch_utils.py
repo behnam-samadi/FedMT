@@ -131,36 +131,31 @@ def average_learners(
                 for c in range(len(learners)):
                   temp_c_state_dict = learners[c].model.state_dict(keep_vars = True)
                   all_data.append(temp_c_state_dict[key].data.cpu().numpy()[class_num])
-                outlier_centers = []
+                outlier_centers = {}
                 for outlier in outliers:
                   dis_to_clients = []
                   for client in clients:
                     cos_sim = dot(all_data[outlier], all_data[client])/(norm(all_data[outlier])*norm(all_data[client]))
                     dis_to_clients.append(cos_sim)
                   dis_to_clients = np.array(dis_to_clients)
-                  outlier_centers.append(np.argmax(dis_to_clients))
+                  outlier_centers[outlier] = np.argmax(dis_to_clients)
+                print(outlier_centers)
+                  #outlier_centers.append(np.argmax(dis_to_clients))
                 # Step2: computing the projection of each outlier on its corresponding center (selected client)
-                center_weights = np.zeros(len(clients))
-                for i in range(len(outliers)):
-                  outlier = outliers[i]
-                  outlier_data = all_data[outlier]
-                  center_data = all_data[clients[outlier_centers[i]]]
-                  projection_mag = (dot(outlier_data , center_data))/norm(center_data)
-                  center_weights[[outlier_centers[i]]] += projection_mag
-                sum_weights = 0
-                for i in range(len(clients)):
-                  sum_weights += center_weights[i]
-                for i in range(len(clients)):
-                  center_weights[i] /= sum_weights
-                print("------------ Clients Weigths: -----------")
-                print(center_weights)
+                #center_weights = np.zeros(len(clients))
+                sum_gradient = 0
+                for i in range(len(learners)):
+                  if i in clients:
+                    sum_gradient += all_data[i]
+                  elif i in outliers:
+                    outlier_data = all_data[i]
+                    center_data = all_data[clients[outlier_centers[i]]]
+                    projection_mag = (dot(outlier_data , center_data))/norm(center_data)
+                    sum_gradient += ((projection_mag / norm(center_data)) * center_data)
                 temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
-                for i in range(len(clients)):
-                  client = clients[i]
-                  temp_state_dict = learners[client].model.state_dict(keep_vars = True)
-                  temp_sub_layer = temp_sub_layer + center_weights[i]* (temp_state_dict[key].data.clone()[class_num, :])
                 #temp_sub_layer /= len(clients)                  
-                temp_layer[class_num, :] = temp_sub_layer
+                sum_gradient /= len(learners)
+                temp_layer[class_num, :] = torch.tensor(sum_gradient)
               target_state_dict[key].data = temp_layer.data.clone()
 
             elif key == "classifier.1.bias":
