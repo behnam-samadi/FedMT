@@ -143,18 +143,21 @@ def average_learners(
                   #outlier_centers.append(np.argmax(dis_to_clients))
                 # Step2: computing the projection of each outlier on its corresponding center (selected client)
                 #center_weights = np.zeros(len(clients))
-                sum_gradient = 0
+                sum_gradient_selecteds = 0
+                sum_gradient_outliers = 0
                 for i in range(len(learners)):
                   if i in clients:
-                    sum_gradient += all_data[i]
+                    sum_gradient_selecteds += all_data[i]
                   elif i in outliers:
                     outlier_data = all_data[i]
                     center_data = all_data[clients[outlier_centers[i]]]
                     projection_mag = (dot(outlier_data , center_data))/norm(center_data)
-                    sum_gradient += ((projection_mag / norm(center_data)) * center_data)
+                    sum_gradient_outliers += ((projection_mag / norm(center_data)) * center_data)
                 temp_sub_layer = torch.zeros(target_state_dict[key].data.shape[1], device=cuda0)
                 #temp_sub_layer /= len(clients)                  
-                sum_gradient /= len(learners)
+                sum_gradient_selecteds /= len(clients)
+                sum_gradient_outliers /= len(outliers)
+                sum_gradient = (sum_gradient_selecteds + sum_gradient_outliers)/2
                 temp_layer[class_num, :] = torch.tensor(sum_gradient)
               target_state_dict[key].data = temp_layer.data.clone()
 
