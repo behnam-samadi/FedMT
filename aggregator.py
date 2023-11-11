@@ -22,8 +22,8 @@ from utils.torch_utils import *
 B = np.load("/content/drive/MyDrive/FL/FedEM/data/cifar10/clients_shares.npy", allow_pickle = True)
 
 def get_model_update(client, class_num, current_layers, current_indices, iteration):
-  layers_1 = np.load("/content/drive/MyDrive/FL/FedEM/layer_updates" +str(iteration-1)+ ".0.npy", allow_pickle=True)
-  indices_1 = np.load("/content/drive/MyDrive/FL/FedEM/sample_indices" +str(iteration-1)+ ".0.npy")
+  layers_1 = np.load("/content/drive/MyDrive/FL/FedEM/UpdatesAndIndices/layer_updates" +str(iteration-1)+ ".0.npy", allow_pickle=True)
+  indices_1 = np.load("/content/drive/MyDrive/FL/FedEM/UpdatesAndIndices/sample_indices" +str(iteration-1)+ ".0.npy")
   layers_2 = current_layers
   indices_2 = np.array(current_indices)
   index1 = np.where(indices_1 == client)[0][0]
@@ -112,12 +112,27 @@ def select_clients_per_class(class_num, num_clients, iteration, dis_threshold, m
     dis_to_selected = np.array(dis_to_selected)
     update_norms = np.array(update_norms)
     final_scores = dis_to_selected * update_norms
+    temp = np.load("round.npy")
+    num_round = temp[0,0]
+
+    #temporary codes start
+    #scores_address = "/content/drive/MyDrive/FL/FedEM/ClientScores_" + str(num_round)+".npy"
+    scores_to_store = []
+    scores_to_store.append(dis_to_selected)
+    scores_to_store.append(update_norms)
+    scores_to_store.append(final_scores)
+    scores_to_store = np.array(scores_to_store)
+    #np.save(scores_address, scores_to_store)
+    #temporary codes end
+
+
+
     clients_sort = np.argsort(final_scores)[::-1]
     result = []
     for c in clients_sort[0:int(num_clients*ratio)]:
       result.append(c)
       #print(B[c][class_num])
-    return(selected, result)
+    return(selected, result, scores_to_store)
 
 
 
@@ -432,24 +447,35 @@ class CentralizedAggregator(Aggregator):
         sample_indices = self.sample_clients()
         clients_updates = np.zeros((self.n_clients_per_round, self.n_learners, self.model_dim))
         clients_updates_not_flat = []
-        np.save("sample_indices" + str(num_round) + ".npy", sample_indices)
+        np.save("UpdatesAndIndices/sample_indices" + str(num_round) + ".npy", sample_indices)
         for i in range(len(sample_indices)):
           client = self.clients[sample_indices[i]]
           clients_updates[i], temp_update = client.step()
           clients_updates_not_flat.append(temp_update)
         clients_updates_not_flat = np.array(clients_updates_not_flat)
-        np.save("layer_updates" + str(num_round) + ".npy", clients_updates_not_flat[:,:,-2])
+        np.save("UpdatesAndIndices/layer_updates" + str(num_round) + ".npy", clients_updates_not_flat[:,:,-2])
         temp[0, 0] = num_round + 1
         np.save("round.npy", temp)
-        selected_per_class = []
-        centers_per_class = []
-        if num_round > 0:
+        if num_round>0:
+          selected_per_class = []
+          centers_per_class = []
           #print("\n\n proposed version \n\n")
+          scores_to_store = []
           for class_num in range(10):#immediate_data
             selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_normal",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
             selected_per_class.append(selecteds[1])
             centers_per_class.append(selecteds[0][0])
+            scores_to_store.append(selecteds[2])
             #print(len(selected_per_class[-1]))
+          scores_to_store = np.array(scores_to_store)
+          #reshape 10*3*80 array to 3*10*80 array
+          a , b, c = scores_to_store.shape
+          reshaped_scores= []
+          for i in range(b):
+            reshaped_scores.append(scores_to_store[:,i,:])
+          reshaped_scores = np.array(reshaped_scores)
+          np.save("/content/drive/MyDrive/FL/FedEM/ClientScores/scores_"+str(num_round)+".npy", reshaped_scores)
+        if num_round > 200:
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
               average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
