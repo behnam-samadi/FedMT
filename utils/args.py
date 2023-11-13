@@ -175,6 +175,11 @@ def parse_args(args_list=None):
         default=argparse.SUPPRESS
     )
     parser.add_argument(
+    "--proposed_method",
+    help='the proposed method to be used in the experimtns',
+    default=argparse.SUPPRESS
+    )
+    parser.add_argument(
         "--seed",
         help='random seed',
         type=int,

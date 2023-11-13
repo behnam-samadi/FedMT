@@ -157,7 +157,19 @@ def average_learners(
                 #temp_sub_layer /= len(clients)                  
                 sum_gradient_selecteds /= len(clients)
                 sum_gradient_outliers /= len(outliers)
-                sum_gradient = (sum_gradient_selecteds + sum_gradient_outliers)/2
+                with open("proposed_method.txt", 'r') as f1:
+                  lines = f1.readlines()
+                proposed_method = lines[0].split("\n")[0]
+                print("proposed method: " + proposed_method)
+                if proposed_method == "proposed1":
+                  sum_gradient = sum_gradient_selecteds
+                elif proposed_method == "proposed2":
+                  sum_gradient = (sum_gradient_selecteds + sum_gradient_outliers)/2
+                elif proposed_method == "proposed3":
+                  sum_gradient = (sum_gradient_selecteds + (0.01)*sum_gradient_outliers)/(1.01)
+                else:
+                  print("proppsed method is not specified")
+                  exit(0)
                 temp_layer[class_num, :] = torch.tensor(sum_gradient)
               target_state_dict[key].data = temp_layer.data.clone()
 

@@ -391,6 +391,7 @@ def get_aggregator(
         global_test_logger,
         test_clients,
         verbose,
+        proposed_method,
         seed=None
 ):
     """
@@ -437,7 +438,8 @@ def get_aggregator(
             test_clients=test_clients,
             sampling_rate=sampling_rate,
             verbose=verbose,
-            seed=seed
+            seed=seed, 
+            proposed_method = proposed_method
         )
     elif aggregator_type == "personalized":
         return PersonalizedAggregator(

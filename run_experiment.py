@@ -138,6 +138,7 @@ def run_experiment(args_):
             global_test_logger=global_test_logger,
             test_clients=test_clients,
             verbose=args_.verbose,
+            proposed_method = args_.proposed_method,
             seed=args_.seed
         )
 

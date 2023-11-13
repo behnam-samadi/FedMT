@@ -94,8 +94,8 @@ def select_clients_per_class(class_num, num_clients, iteration, dis_threshold, m
     for i in range(num_clients):
       result.append(get_model_update(i, class_num, current_layers, current_indices,  iteration))
     order = np.argsort(result)[::-1]
-    for item in order[0:int(num_clients*ratio)]:
-      print(B[item, class_num])
+    #for item in order[0:int(num_clients*ratio)]:
+      #print(B[item, class_num])
     return(order[0:int(num_clients*ratio)])
   if method == "med_normal" or method == "med_top_n" or method == "largest":
     update_norms = []
@@ -124,9 +124,6 @@ def select_clients_per_class(class_num, num_clients, iteration, dis_threshold, m
     scores_to_store = np.array(scores_to_store)
     #np.save(scores_address, scores_to_store)
     #temporary codes end
-
-
-
     clients_sort = np.argsort(final_scores)[::-1]
     result = []
     for c in clients_sort[0:int(num_clients*ratio)]:
@@ -462,20 +459,20 @@ class CentralizedAggregator(Aggregator):
           #print("\n\n proposed version \n\n")
           scores_to_store = []
           for class_num in range(10):#immediate_data
-            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "med_normal",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
-            selected_per_class.append(selecteds[1])
-            centers_per_class.append(selecteds[0][0])
-            scores_to_store.append(selecteds[2])
+            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "threshold",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
+            selected_per_class.append(selecteds)
+            #centers_per_class.append(selecteds[0][0])
+            #scores_to_store.append(selecteds[2])
             #print(len(selected_per_class[-1]))
-          scores_to_store = np.array(scores_to_store)
+          #scores_to_store = np.array(scores_to_store)
           #reshape 10*3*80 array to 3*10*80 array
-          a , b, c = scores_to_store.shape
-          reshaped_scores= []
-          for i in range(b):
-            reshaped_scores.append(scores_to_store[:,i,:])
-          reshaped_scores = np.array(reshaped_scores)
-          np.save("/content/drive/MyDrive/FL/FedEM/ClientScores/scores_"+str(num_round)+".npy", reshaped_scores)
-        if num_round > 200:
+          #a , b, c = scores_to_store.shape
+          #reshaped_scores= []
+          #for i in range(b):
+            #reshaped_scores.append(scores_to_store[:,i,:])
+          #reshaped_scores = np.array(reshaped_scores)
+          #np.save("/content/drive/MyDrive/FL/FedEM/ClientScores/scores_"+str(num_round)+".npy", reshaped_scores)
+        if num_round > 0:
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
               average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
