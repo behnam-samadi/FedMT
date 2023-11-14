@@ -75,6 +75,7 @@ def average_learners(
         learners,
         target_learner,
         selected_clients_per_class,
+        proposed_method,
         weights=None,
         average_params=True,
         average_gradients=False):
@@ -157,9 +158,6 @@ def average_learners(
                 #temp_sub_layer /= len(clients)                  
                 sum_gradient_selecteds /= len(clients)
                 sum_gradient_outliers /= len(outliers)
-                with open("proposed_method.txt", 'r') as f1:
-                  lines = f1.readlines()
-                proposed_method = lines[0].split("\n")[0]
                 print("proposed method: " + proposed_method)
                 if proposed_method == "proposed1":
                   sum_gradient = sum_gradient_selecteds

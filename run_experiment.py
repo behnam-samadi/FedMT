@@ -12,6 +12,7 @@ This file can also be imported as a module and contains the following function:
 from utils.utils import *
 from utils.constants import *
 from utils.args import *
+import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -163,6 +164,8 @@ def run_experiment(args_):
 if __name__ == "__main__":
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
+    temp = np.zeros((1,1))
+    temp[0,0] = 0
+    np.save("round.npy", temp)
     args = parse_args()
     run_experiment(args)

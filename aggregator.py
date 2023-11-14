@@ -213,6 +213,7 @@ class Aggregator(ABC):
             log_freq,
             global_train_logger,
             global_test_logger,
+            proposed_method,
             sampling_rate=1.,
             sample_with_replacement=False,
             test_clients=None,
@@ -224,6 +225,7 @@ class Aggregator(ABC):
 
         rng_seed = (seed if (seed is not None and seed >= 0) else int(time.time()))
         self.rng = random.Random(rng_seed)
+        self.proposed_method = proposed_method
         self.np_rng = np.random.default_rng(rng_seed)
 
         if test_clients is None:
@@ -475,7 +477,7 @@ class CentralizedAggregator(Aggregator):
         if num_round > 0:
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
-              average_learners(learners, learner,selected_per_class, weights=self.clients_weights)
+              average_learners(learners, learner,selected_per_class, self.proposed_method, weights=self.clients_weights)
         else:
             #print("\n\n\nclassic version:\n\n\n")
             for learner_id, learner in enumerate(self.global_learners_ensemble):
