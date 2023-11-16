@@ -214,6 +214,7 @@ class Aggregator(ABC):
             global_train_logger,
             global_test_logger,
             proposed_method,
+            selection_method,
             sampling_rate=1.,
             sample_with_replacement=False,
             test_clients=None,
@@ -226,6 +227,7 @@ class Aggregator(ABC):
         rng_seed = (seed if (seed is not None and seed >= 0) else int(time.time()))
         self.rng = random.Random(rng_seed)
         self.proposed_method = proposed_method
+        self.selection_method = selection_method
         self.np_rng = np.random.default_rng(rng_seed)
 
         if test_clients is None:
@@ -344,7 +346,7 @@ class Aggregator(ABC):
     def save_state(self, dir_path):
         """
         save the state of the aggregator, i.e., the state dictionary of each `learner` in `global_learners_ensemble`
-         as `.pt` file, and `learners_weights` for each client in `self.clients` as a single numpy array (`.np` file).
+          as `.pt` file, and `learners_weights` for each client in `self.clients` as a single numpy array (`.np` file).
 
         :param dir_path:
         """
@@ -369,7 +371,7 @@ class Aggregator(ABC):
     def load_state(self, dir_path):
         """
         load the state of the aggregator, i.e., the state dictionary of each `learner` in `global_learners_ensemble`
-         from a `.pt` file, and `learners_weights` for each client in `self.clients` from numpy array (`.np` file).
+          from a `.pt` file, and `learners_weights` for each client in `self.clients` from numpy array (`.np` file).
 
         :param dir_path:
         """
@@ -436,7 +438,7 @@ class NoCommunicationAggregator(Aggregator):
 
 class CentralizedAggregator(Aggregator):
     r""" Standard Centralized Aggregator.
-     All clients get fully synchronized with the average client.
+      All clients get fully synchronized with the average client.
 
     """
     def mix(self):
@@ -453,6 +455,11 @@ class CentralizedAggregator(Aggregator):
           clients_updates_not_flat.append(temp_update)
         clients_updates_not_flat = np.array(clients_updates_not_flat)
         np.save("UpdatesAndIndices/layer_updates" + str(num_round) + ".npy", clients_updates_not_flat[:,:,-2])
+        if self.proposed_method == "proposed1" or self.proposed_method == "proposed2" or self.proposed_method == "proposed3":
+            switch_to_proposed_round = 0
+        if self.proposed_method == "baseline":
+            #immediate_data
+            switch_to_proposed_round = 200
         temp[0, 0] = num_round + 1
         np.save("round.npy", temp)
         if num_round>0:
@@ -461,11 +468,10 @@ class CentralizedAggregator(Aggregator):
           #print("\n\n proposed version \n\n")
           scores_to_store = []
           for class_num in range(10):#immediate_data
-            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, "threshold",clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
+            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, self.selection_method,clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
             selected_per_class.append(selecteds)
             #centers_per_class.append(selecteds[0][0])
             #scores_to_store.append(selecteds[2])
-            #print(len(selected_per_class[-1]))
           #scores_to_store = np.array(scores_to_store)
           #reshape 10*3*80 array to 3*10*80 array
           #a , b, c = scores_to_store.shape
@@ -474,7 +480,7 @@ class CentralizedAggregator(Aggregator):
             #reshaped_scores.append(scores_to_store[:,i,:])
           #reshaped_scores = np.array(reshaped_scores)
           #np.save("/content/drive/MyDrive/FL/FedEM/ClientScores/scores_"+str(num_round)+".npy", reshaped_scores)
-        if num_round > 0:
+        if num_round > switch_to_proposed_round:
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
               average_learners(learners, learner,selected_per_class, self.proposed_method, weights=self.clients_weights)
@@ -667,9 +673,9 @@ class LoopLessLocalSGDAggregator(PersonalizedAggregator):
 class ClusteredAggregator(Aggregator):
     """
     Implements
-     `Clustered Federated Learning: Model-Agnostic Distributed Multi-Task Optimization under Privacy Constraints`.
+      `Clustered Federated Learning: Model-Agnostic Distributed Multi-Task Optimization under Privacy Constraints`.
 
-     Follows implementation from https://github.com/felisat/clustered-federated-learning
+      Follows implementation from https://github.com/felisat/clustered-federated-learning
     """
     def __init__(
             self,
@@ -785,7 +791,7 @@ class ClusteredAggregator(Aggregator):
 class AgnosticAggregator(CentralizedAggregator):
     """
     Implements
-     `Agnostic Federated Learning`__(https://arxiv.org/pdf/1902.00146.pdf).
+      `Agnostic Federated Learning`__(https://arxiv.org/pdf/1902.00146.pdf).
 
     """
     def __init__(
@@ -856,7 +862,7 @@ class AgnosticAggregator(CentralizedAggregator):
 class FFLAggregator(CentralizedAggregator):
     """
     Implements q-FedAvg from
-     `FAIR RESOURCE ALLOCATION IN FEDERATED LEARNING`__(https://arxiv.org/pdf/1905.10497.pdf)
+      `FAIR RESOURCE ALLOCATION IN FEDERATED LEARNING`__(https://arxiv.org/pdf/1905.10497.pdf)
 
     """
     def __init__(

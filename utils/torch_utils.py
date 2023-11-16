@@ -140,7 +140,7 @@ def average_learners(
                     dis_to_clients.append(cos_sim)
                   dis_to_clients = np.array(dis_to_clients)
                   outlier_centers[outlier] = np.argmax(dis_to_clients)
-                print(outlier_centers)
+                #print(outlier_centers)
                   #outlier_centers.append(np.argmax(dis_to_clients))
                 # Step2: computing the projection of each outlier on its corresponding center (selected client)
                 #center_weights = np.zeros(len(clients))

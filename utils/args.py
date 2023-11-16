@@ -179,6 +179,12 @@ def parse_args(args_list=None):
     help='the proposed method to be used in the experimtns',
     default=argparse.SUPPRESS
     )
+
+    parser.add_argument(
+    "--selection_method",
+    help='the method of selecting gradients',
+    default=argparse.SUPPRESS
+    )
     parser.add_argument(
         "--seed",
         help='random seed',
