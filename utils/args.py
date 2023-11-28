@@ -187,7 +187,14 @@ def parse_args(args_list=None):
     )
 
     parser.add_argument(
-    "--client_selection_ratio",
+    "--num_selected_clients",
+    help='the ratio of clients to be selected in aggregation stage',
+    type=float,
+    default=argparse.SUPPRESS
+    )
+
+    parser.add_argument(
+    "--num_all_clients",
     help='the ratio of clients to be selected in aggregation stage',
     type=float,
     default=argparse.SUPPRESS
