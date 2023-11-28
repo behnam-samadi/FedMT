@@ -393,6 +393,7 @@ def get_aggregator(
         verbose,
         proposed_method,
         selection_method,
+        client_selection_ratio,
         seed=None
 ):
     """
@@ -441,7 +442,8 @@ def get_aggregator(
             verbose=verbose,
             seed=seed, 
             proposed_method = proposed_method,
-            selection_method = selection_method
+            selection_method = selection_method,
+            client_selection_ratio = client_selection_ratio
         )
     elif aggregator_type == "personalized":
         return PersonalizedAggregator(

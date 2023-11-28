@@ -185,6 +185,15 @@ def parse_args(args_list=None):
     help='the method of selecting gradients',
     default=argparse.SUPPRESS
     )
+
+    parser.add_argument(
+    "--client_selection_ratio",
+    help='the ratio of clients to be selected in aggregation stage',
+    type=float,
+    default=argparse.SUPPRESS
+    )
+
+
     parser.add_argument(
         "--seed",
         help='random seed',

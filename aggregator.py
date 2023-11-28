@@ -19,11 +19,11 @@ from utils.torch_utils import *
 
 
 
-B = np.load("/content/drive/MyDrive/FL/FedEM/data/cifar10/clients_shares.npy", allow_pickle = True)
+B = np.load("data/cifar10/clients_shares.npy", allow_pickle = True)
 
 def get_model_update(client, class_num, current_layers, current_indices, iteration):
-  layers_1 = np.load("/content/drive/MyDrive/FL/FedEM/UpdatesAndIndices/layer_updates" +str(iteration-1)+ ".0.npy", allow_pickle=True)
-  indices_1 = np.load("/content/drive/MyDrive/FL/FedEM/UpdatesAndIndices/sample_indices" +str(iteration-1)+ ".0.npy")
+  layers_1 = np.load("UpdatesAndIndices/layer_updates" +str(iteration-1)+ ".0.npy", allow_pickle=True)
+  indices_1 = np.load("UpdatesAndIndices/sample_indices" +str(iteration-1)+ ".0.npy")
   layers_2 = current_layers
   indices_2 = np.array(current_indices)
   index1 = np.where(indices_1 == client)[0][0]
@@ -215,6 +215,7 @@ class Aggregator(ABC):
             global_test_logger,
             proposed_method,
             selection_method,
+            client_selection_ratio,
             sampling_rate=1.,
             sample_with_replacement=False,
             test_clients=None,
@@ -228,6 +229,7 @@ class Aggregator(ABC):
         self.rng = random.Random(rng_seed)
         self.proposed_method = proposed_method
         self.selection_method = selection_method
+        self.client_selection_ratio = client_selection_ratio
         self.np_rng = np.random.default_rng(rng_seed)
 
         if test_clients is None:
@@ -468,7 +470,7 @@ class CentralizedAggregator(Aggregator):
           #print("\n\n proposed version \n\n")
           scores_to_store = []
           for class_num in range(10):#immediate_data
-            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, self.selection_method,clients_updates_not_flat[:,:,-2], sample_indices ,0.1)            
+            selecteds = select_clients_per_class(class_num, 80, int(num_round) ,0.45, self.selection_method,clients_updates_not_flat[:,:,-2], sample_indices ,self.client_selection_ratio)            
             selected_per_class.append(selecteds)
             #centers_per_class.append(selecteds[0][0])
             #scores_to_store.append(selecteds[2])

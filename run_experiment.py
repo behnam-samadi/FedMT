@@ -141,6 +141,7 @@ def run_experiment(args_):
             verbose=args_.verbose,
             proposed_method = args_.proposed_method,
             selection_method = args_.selection_method,
+            client_selection_ratio = args_.client_selection_ratio,
             seed=args_.seed
         )
 

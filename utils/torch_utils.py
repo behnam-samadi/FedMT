@@ -158,7 +158,7 @@ def average_learners(
                 #temp_sub_layer /= len(clients)                  
                 sum_gradient_selecteds /= len(clients)
                 sum_gradient_outliers /= len(outliers)
-                print("proposed method: " + proposed_method)
+                #print("proposed method: " + proposed_method)
                 if proposed_method == "proposed1":
                   sum_gradient = sum_gradient_selecteds
                 elif proposed_method == "proposed2":
