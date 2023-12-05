@@ -165,7 +165,7 @@ def average_learners(
                 elif proposed_method == "proposed2":
                   sum_gradient = (sum_gradient_selecteds + sum_gradient_outliers)/2
                 elif proposed_method == "proposed3":
-                  sum_gradient = (sum_gradient_selecteds + (beta_proposed)*sum_gradient_outliers)/(1.01)
+                  sum_gradient = (sum_gradient_selecteds + (beta_proposed)*sum_gradient_outliers)/(1+beta_proposed)
                 else:
                   print("proppsed method is not specified")
                   exit(0)
