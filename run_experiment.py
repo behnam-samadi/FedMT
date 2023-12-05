@@ -142,6 +142,7 @@ def run_experiment(args_):
             proposed_method = args_.proposed_method,
             selection_method = args_.selection_method,
             client_selection_ratio = args_.num_selected_clients / args_.num_all_clients,
+            beta_proposed = args_.beta_proposed,
             seed=args_.seed
         )
 

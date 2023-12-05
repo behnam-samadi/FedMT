@@ -200,6 +200,13 @@ def parse_args(args_list=None):
     default=argparse.SUPPRESS
     )
 
+    parser.add_argument(
+    "--beta_proposed",
+    help='the ratio of projected gradients in final aggregation in proposed3 method',
+    type=float,
+    default=0.01
+    )
+
 
     parser.add_argument(
         "--seed",

@@ -394,6 +394,7 @@ def get_aggregator(
         proposed_method,
         selection_method,
         client_selection_ratio,
+        beta_proposed,
         seed=None
 ):
     """
@@ -443,7 +444,8 @@ def get_aggregator(
             seed=seed, 
             proposed_method = proposed_method,
             selection_method = selection_method,
-            client_selection_ratio = client_selection_ratio
+            client_selection_ratio = client_selection_ratio,
+            beta_proposed = beta_proposed
         )
     elif aggregator_type == "personalized":
         return PersonalizedAggregator(

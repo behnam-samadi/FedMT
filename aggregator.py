@@ -216,6 +216,7 @@ class Aggregator(ABC):
             proposed_method,
             selection_method,
             client_selection_ratio,
+            beta_proposed,
             sampling_rate=1.,
             sample_with_replacement=False,
             test_clients=None,
@@ -230,6 +231,7 @@ class Aggregator(ABC):
         self.proposed_method = proposed_method
         self.selection_method = selection_method
         self.client_selection_ratio = client_selection_ratio
+        self.beta_proposed = beta_proposed
         self.np_rng = np.random.default_rng(rng_seed)
 
         if test_clients is None:
@@ -485,7 +487,7 @@ class CentralizedAggregator(Aggregator):
         if num_round > switch_to_proposed_round:
           for learner_id, learner in enumerate(self.global_learners_ensemble):
               learners = [client.learners_ensemble[learner_id] for client in self.clients]
-              average_learners(learners, learner,selected_per_class, self.proposed_method, weights=self.clients_weights)
+              average_learners(learners, learner,selected_per_class, self.proposed_method, self.beta_proposed, weights=self.clients_weights)
         else:
             #print("\n\n\nclassic version:\n\n\n")
             for learner_id, learner in enumerate(self.global_learners_ensemble):
