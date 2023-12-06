@@ -16,7 +16,7 @@ do
 	    --verbose 1 \
 	    --proposed_method proposed3 \
 	    --selection_method threshold \
-	    --num_selected_clients 5 \
+	    --num_selected_clients 9 \
 	    --num_all_clients 80 \
       --beta_proposed $beta_value
 
